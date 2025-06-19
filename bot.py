@@ -14,6 +14,8 @@ bot = Bot(token=os.getenv("TELEGRAM_BOT_TOKEN"))
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
 
+ADMIN_IDS = [123456789]  # ← Мұнда өз Telegram ID-нізді жазыңыз
+
 branches = [
     "Маркет", "Doner House",
     "Кантин центр", "Red Coffee",
@@ -57,7 +59,7 @@ async def start(message: Message, state: FSMContext):
     await message.answer("Қай бөлімшесіз?", reply_markup=keyboard)
     await state.set_state(SalesStates.branch)
 
-@dp.message(F.text.lower() == "рестарт")
+@dp.message(commands=["restart"])
 async def manual_restart(message: Message, state: FSMContext):
     await state.clear()
     keyboard = ReplyKeyboardMarkup(
@@ -66,6 +68,34 @@ async def manual_restart(message: Message, state: FSMContext):
     )
     await message.answer("🔄 Барлығы өшірілді. Қай бөлімшесіз?", reply_markup=keyboard)
     await state.set_state(SalesStates.branch)
+
+@dp.message(commands=["cancel"])
+async def cancel(message: Message, state: FSMContext):
+    await state.clear()
+    await message.answer("❌ Процесс тоқтатылды. Қаласаңыз /start деп қайта бастай аласыз.", reply_markup=ReplyKeyboardRemove())
+
+@dp.message(commands=["help"])
+async def help_command(message: Message):
+    await message.answer(
+        "📋 Командалар тізімі:\n"
+        "/start – Ботты бастау\n"
+        "/restart – Барлығын қайта бастау\n"
+        "/cancel – Тоқтату\n"
+        "/help – Анықтама\n"
+        "/admin – Тек админ үшін мәзір\n"
+        "/today – (әзірше) демо: бүгінгі дата\n"
+    )
+
+@dp.message(commands=["admin"])
+async def admin_only(message: Message):
+    if message.from_user.id not in ADMIN_IDS:
+        await message.answer("⛔ Бұл команда тек админдерге арналған.")
+        return
+    await message.answer("🔐 Админ мәзірі (келесі қадам: Google Sheets, есеп, фильтр т.б.)")
+
+@dp.message(commands=["today"])
+async def today_command(message: Message):
+    await message.answer(f"📅 Бүгінгі күн: {datetime.today().strftime('%d.%m.%Y')}")
 
 @dp.message(SalesStates.branch)
 async def set_branch(message: Message, state: FSMContext):
