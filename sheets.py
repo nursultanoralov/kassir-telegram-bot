@@ -23,19 +23,23 @@ def save_to_sheet(branch, username, user_id, values, total):
 
     today = datetime.now().strftime("%d-%m-%Y")  # Күн-ай-жыл
 
+    def fmt(n): return f"{int(n):,}".replace(",", " ") + " тг" if n else "0 тг"
+
     row = [
         today,
         username,
         str(user_id),
-        values.get("Kaspi Pay-1", 0),
-        values.get("Kaspi Pay-2", 0),
-        values.get("Halyk-1", 0),
-        values.get("Halyk-2", 0),
-        values.get("Баллом", 0),
-        values.get("Сертификат", 0),
-        values.get("Наличка", 0),
-        values.get("Талон", 0),
-        total
+        fmt(values.get("Kaspi Pay1", 0)),
+        fmt(values.get("Kaspi Pay2", 0)),
+        fmt(values.get("Halyk bank1", 0)),
+        fmt(values.get("Halyk bank2", 0)),
+        fmt(values.get("Талон", 0)),
+        fmt(values.get("Сертификат", 0)),
+        fmt(values.get("Наличка", 0)),
+        fmt(values.get("Гости", 0)),
+        fmt(values.get("Сотрудники", 0)),
+        f"*{fmt(total)}*"  # Жирный ету үшін Telegram-да ғана, Sheets-та `*` қалуы мүмкін
     ]
 
     worksheet.append_row(row)
+
