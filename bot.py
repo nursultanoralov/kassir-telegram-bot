@@ -57,6 +57,16 @@ async def start(message: Message, state: FSMContext):
     await message.answer("Қай бөлімшесіз?", reply_markup=keyboard)
     await state.set_state(SalesStates.branch)
 
+@dp.message(F.text.lower() == "рестарт")
+async def manual_restart(message: Message, state: FSMContext):
+    await state.clear()
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text=branches[i]), KeyboardButton(text=branches[i + 1])] for i in range(0, len(branches), 2)],
+        resize_keyboard=True
+    )
+    await message.answer("🔄 Барлығы өшірілді. Қай бөлімшесіз?", reply_markup=keyboard)
+    await state.set_state(SalesStates.branch)
+
 @dp.message(SalesStates.branch)
 async def set_branch(message: Message, state: FSMContext):
     if message.text not in branches:
