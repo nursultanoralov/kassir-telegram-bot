@@ -88,7 +88,7 @@ async def confirm_data(call: CallbackQuery, state: FSMContext):
         username = call.from_user.username or "жоқ"
         full_name = call.from_user.full_name
         user_id = call.from_user.id
-        date = datetime.now().strftime("%Y-%m-%d")
+        date = datetime.now().strftime("%d-%m-%Y")
         total = data["total"]
         values = data["values"]
         branch = data["branch"]
