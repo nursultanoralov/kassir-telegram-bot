@@ -23,7 +23,7 @@ def save_to_sheet(branch, username, user_id, values, total):
 
     today = datetime.now().strftime("%d-%m-%Y")  # Күн-ай-жыл
 
-    def fmt(n): return f"{int(n):,}".replace(",", " ") + " тг" if n else "0 тг"
+    def fmt(n): return f"{int(n):,}".replace(",", " ") if n else 0
 
     row = [
         today,
