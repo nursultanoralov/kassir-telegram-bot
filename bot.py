@@ -132,7 +132,7 @@ async def admin_cmd(message: Message):
 @dp.message(Command("today"))
 async def today_cmd(message: Message):
     if message.from_user.id in ADMIN_IDS:
-        date = datetime.now().strftime("%Y-%m-%d")
+        date = datetime.now().strftime("%d-%m-%Y")  # күн-ай-жыл
         await message.answer(f"📅 Бүгінгі күн: {date}")
     else:
         await message.answer("🚫 Бұл команда тек админге арналған.")
@@ -145,11 +145,19 @@ async def id_cmd(message: Message):
 # --- Кнопкалар ---
 def branch_keyboard():
     kb = ReplyKeyboardBuilder()
-    kb.row(
-        types.KeyboardButton(text="Филиал-1"),
-        types.KeyboardButton(text="Филиал-2")
-    )
+    branches = [
+        "Маркет", "Кантин центр", "Кантин H блок",
+        "Кантин Спорт", "Uldar Dorm", "Kyzdar Dorm",
+        "Doner House", "Red Coffee", "Белка",
+        "Кантин Раздача", "Кофе вендинг", "Киоск-1"
+    ]
+    for i in range(0, len(branches), 2):
+        kb.row(
+            types.KeyboardButton(text=branches[i]),
+            types.KeyboardButton(text=branches[i+1]) if i+1 < len(branches) else None
+        )
     return kb.as_markup(resize_keyboard=True, one_time_keyboard=True)
+
 
 def confirm_keyboard():
     kb = InlineKeyboardBuilder()
