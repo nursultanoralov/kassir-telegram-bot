@@ -1,117 +1,149 @@
+import asyncio
 import os
 from aiogram import Bot, Dispatcher, F
 from aiogram.enums import ParseMode
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 from dotenv import load_dotenv
 from sheets import save_to_sheet
+from datetime import datetime
 
 load_dotenv()
-from aiogram.client.default import DefaultBotProperties
 
-bot = Bot(
-    token=os.getenv("TELEGRAM_BOT_TOKEN"),
-    default=DefaultBotProperties(parse_mode=ParseMode.HTML)
-)
-
+bot = Bot(token=os.getenv("TELEGRAM_BOT_TOKEN"), default=Bot.Default(parse_mode=ParseMode.HTML))
 dp = Dispatcher(storage=MemoryStorage())
 
-BRANCHES = [
+ADMIN_ID = 425438049
+TIMEOUT_MINUTES = 10
+
+class Form(StatesGroup):
+    branch = State()
+    values = State()
+
+branches = [
     "Маркет", "Кантин центр", "Кантин H блок", "Кантин Спорт",
     "Uldar Dorm", "Kyzdar Dorm", "Doner House", "Red Coffee",
     "Белка", "Кантин Раздача", "Кофе вендинг", "Киоск-1"
 ]
 
-FIELDS = [
+fields = [
     "Kaspi Pay1", "Kaspi Pay2", "Halyk bank1", "Halyk bank2",
     "Талон", "Сертификат", "Наличка", "Гости", "Сотрудники"
 ]
 
-class Form(StatesGroup):
-    choosing_branch = State()
-    filling_data = State()
-    confirming = State()
+def get_main_keyboard():
+    return ReplyKeyboardMarkup(keyboard=[
+        [KeyboardButton(branch)] for branch in branches
+    ], resize_keyboard=True)
 
-user_data = {}
+def get_confirm_keyboard():
+    return ReplyKeyboardMarkup(keyboard=[
+        [KeyboardButton("✅ Растаймын")],
+        [KeyboardButton("🔁 Қайта енгізу")]
+    ], resize_keyboard=True)
 
 @dp.message(F.text == "/start")
-async def start(message: Message, state: FSMContext):
+async def start_handler(message: Message, state: FSMContext):
     await state.clear()
-    buttons = [[KeyboardButton(text=branch)] for branch in BRANCHES]
-    markup = ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
-    await message.answer("Филиалды таңдаңыз:", reply_markup=markup)
-    await state.set_state(Form.choosing_branch)
+    await state.set_state(Form.branch)
+    await message.answer("Бөлімшені таңдаңыз:", reply_markup=get_main_keyboard())
 
-@dp.message(Form.choosing_branch)
-async def choose_branch(message: Message, state: FSMContext):
-    branch = message.text
-    if branch not in BRANCHES:
-        return await message.answer("Тізімнен филиалды таңдаңыз.")
-    user_data[message.from_user.id] = {"branch": branch, "data": {}}
-    await state.update_data(index=0)
-    await message.answer(f"{FIELDS[0]}:")
-    await state.set_state(Form.filling_data)
+@dp.message(Form.branch)
+async def branch_chosen(message: Message, state: FSMContext):
+    if message.text not in branches:
+        await message.answer("Келесі тізімнен бөлімшені таңдаңыз.")
+        return
+    await state.update_data(branch=message.text, values={})
+    await state.set_state(Form.values)
+    await ask_next_field(message, state)
 
-@dp.message(Form.filling_data)
-async def fill_data(message: Message, state: FSMContext):
-    try:
-        amount = int(message.text.replace(" ", ""))
-    except ValueError:
-        return await message.answer("Сан енгізіңіз:")
+async def ask_next_field(message: Message, state: FSMContext):
+    data = await state.get_data()
+    values = data["values"]
+    for field in fields:
+        if field not in values:
+            await message.answer(f"{field} сомасын енгізіңіз (мысалы: 12000):")
+            return
+    total = sum(int(values.get(field, 0)) for field in fields)
+    formatted_values = "\n".join([
+        f"{field}: <b>{format(int(values.get(field, 0)), ',').replace(',', ' ')}</b> тг" if field in ["Наличка"] else
+        f"{field}: {format(int(values.get(field, 0)), ',').replace(',', ' ')} тг"
+        for field in fields
+    ])
+    formatted_total = f"<b>Жалпы: {format(total, ',').replace(',', ' ')} тг</b>"
 
-    state_data = await state.get_data()
-    index = state_data.get("index", 0)
-    field = FIELDS[index]
-    user_data[message.from_user.id]["data"][field] = amount
+    await message.answer(
+        f"<b>Кіріс мәліметтері:</b>\n\n{formatted_values}\n\n{formatted_total}",
+        reply_markup=get_confirm_keyboard()
+    )
 
-    if index + 1 < len(FIELDS):
-        await state.update_data(index=index + 1)
-        await message.answer(f"{FIELDS[index + 1]}:")
-    else:
-        data = user_data[message.from_user.id]["data"]
-        total = sum(data.values())
-        user_data[message.from_user.id]["total"] = total
+@dp.message(Form.values)
+async def process_field(message: Message, state: FSMContext):
+    data = await state.get_data()
+    values = data["values"]
+    current_field = None
+    for field in fields:
+        if field not in values:
+            current_field = field
+            break
+    if not current_field:
+        await message.answer("Бәрі енгізілген.")
+        return
 
-        lines = []
-        for f in FIELDS:
-            value = data.get(f, 0)
-            if f == "Наличка":
-                lines.append(f"<b>{f}</b>: <b>{value:,}тг</b>".replace(",", " "))
-            else:
-                lines.append(f"{f}: {value:,}тг".replace(",", " "))
-        lines.append(f"\n<b>Жалпы сома:</b> <b>{total:,}тг</b>".replace(",", " "))
+    if not message.text.replace(" ", "").isdigit():
+        await message.answer("Сан енгізіңіз:")
+        return
 
-        markup = ReplyKeyboardMarkup(
-            keyboard=[[KeyboardButton(text="Растаймын")], [KeyboardButton(text="Қайта енгізу")]],
-            resize_keyboard=True)
-        await message.answer("\n".join(lines), reply_markup=markup)
-        await state.set_state(Form.confirming)
+    values[current_field] = int(message.text.replace(" ", ""))
+    await state.update_data(values=values)
+    await ask_next_field(message, state)
 
-@dp.message(Form.confirming)
-async def confirm(message: Message, state: FSMContext):
-    if message.text == "Қайта енгізу":
-        await state.update_data(index=0)
-        await message.answer(f"{FIELDS[0]}:")
-        await state.set_state(Form.filling_data)
-    elif message.text == "Растаймын":
-        uid = message.from_user.id
-        username = message.from_user.full_name
-        branch = user_data[uid]["branch"]
-        values = user_data[uid]["data"]
-        total = user_data[uid]["total"]
-        save_to_sheet(branch, username, uid, values, total)
-        await message.answer("✅ Мәліметтер Google Sheets-ке енгізілді!",
-                             reply_markup=ReplyKeyboardMarkup(
-                                 keyboard=[[KeyboardButton(text="/start")]], resize_keyboard=True))
-        await state.clear()
+@dp.message(F.text == "✅ Растаймын")
+async def confirm_data(message: Message, state: FSMContext):
+    data = await state.get_data()
+    branch = data["branch"]
+    values = data["values"]
+    total = sum(int(values.get(field, 0)) for field in fields)
 
-@dp.message(F.text.in_({"/cancel", "cancel"}))
-async def cancel(message: Message, state: FSMContext):
+    await message.answer("Google Sheets кестесіне енгізілуде...")
+    save_to_sheet(branch, message.from_user.full_name, message.from_user.id, values, total)
+    await message.answer("✅ Енгізілді. /start командасы арқылы қайта бастауға болады.")
     await state.clear()
-    await message.answer("Операция тоқтатылды. Қайта бастау үшін /start басыңыз.")
+
+@dp.message(F.text == "🔁 Қайта енгізу")
+async def retry_input(message: Message, state: FSMContext):
+    await state.clear()
+    await message.answer("Қайта басталды. Бөлімшені таңдаңыз:", reply_markup=get_main_keyboard())
+    await state.set_state(Form.branch)
+
+@dp.message(F.text == "/help")
+async def help_handler(message: Message, state: FSMContext):
+    await message.answer("🛠 Көмек алу үшін /start деп жазыңыз.\nМәзірден бөлімшені таңдап, сомаларды енгізіңіз.")
+
+@dp.message(F.text == "/admin")
+async def admin_handler(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("Сізде рұқсат жоқ.")
+        return
+    await message.answer(f"Admin панелі\n\nID: <code>{message.from_user.id}</code>\nАты: {message.from_user.full_name}")
+
+@dp.message(F.text == "/restart")
+async def restart_handler(message: Message, state: FSMContext):
+    await state.clear()
+    await message.answer("Қайтадан басталды. Бөлімшені таңдаңыз:", reply_markup=get_main_keyboard())
+    await state.set_state(Form.branch)
+
+async def clear_old_sessions():
+    while True:
+        await asyncio.sleep(60)
+        now = datetime.now()
+        # Мұнда 10 минут өткен сессияларды FSMContext арқылы тазалауға болады егер сақталса
+
+async def main():
+    await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    import asyncio
-    asyncio.run(dp.start_polling(bot))
+    asyncio.run(main())
