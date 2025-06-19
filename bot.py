@@ -10,10 +10,17 @@ from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 from dotenv import load_dotenv
 from sheets import save_to_sheet
 from datetime import datetime
+from aiogram import Bot
+from aiogram.enums import ParseMode
+from aiogram.client.default import DefaultBotProperties
 
+bot = Bot(
+    token=os.getenv("TELEGRAM_BOT_TOKEN"),
+    default=DefaultBotProperties(parse_mode=ParseMode.HTML)
+)
 load_dotenv()
 
-bot = Bot(token=os.getenv("TELEGRAM_BOT_TOKEN"), default=Bot.Default(parse_mode=ParseMode.HTML))
+
 dp = Dispatcher(storage=MemoryStorage())
 
 ADMIN_ID = 425438049
