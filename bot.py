@@ -102,3 +102,6 @@ async def confirm(call: CallbackQuery, state: FSMContext):
 
     await call.message.answer("✅ Есеп қабылданды! Рақмет.")
     await state.clear()
+
+if __name__ == "__main__":
+    dp.run_polling(bot)
