@@ -15,7 +15,7 @@ dp = Dispatcher(storage=MemoryStorage())
 
 # Айнымалы
 ADMIN_ID = 425438049
-FIELDS = ["Kaspi Pay-1", "Kaspi Pay-2", "Halyk-1", "Halyk-2", "Баллом", "Сертификат", "Наличка", "Талон"]
+FIELDS = ["Kaspi Pay-1", "Kaspi Pay-2", "Halyk-1", "Halyk-2", "Талон", "Сертификат", "Наличка", "Гости", "Сотрудники"]
 
 BRANCHES = [
     "Маркет", "Кантин центр", "Кантин H блок", "Кантин Спорт",
