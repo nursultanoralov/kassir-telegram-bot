@@ -9,8 +9,13 @@ from dotenv import load_dotenv
 from sheets import save_to_sheet
 
 load_dotenv()
+from aiogram.client.default import DefaultBotProperties
 
-bot = Bot(token=os.getenv("TELEGRAM_BOT_TOKEN"), parse_mode=ParseMode.HTML)
+bot = Bot(
+    token=os.getenv("TELEGRAM_BOT_TOKEN"),
+    default=DefaultBotProperties(parse_mode=ParseMode.HTML)
+)
+
 dp = Dispatcher(storage=MemoryStorage())
 
 BRANCHES = [
