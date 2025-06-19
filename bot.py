@@ -14,7 +14,6 @@ bot = Bot(token=os.getenv("TELEGRAM_BOT_TOKEN"))
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
 
-# Бөлімшелер
 branches = [
     "Маркет", "Doner House",
     "Кантин центр", "Red Coffee",
@@ -24,7 +23,6 @@ branches = [
     "Kyzdar Dorm", "Киоск-1"
 ]
 
-# FSM күйлері
 class SalesStates(StatesGroup):
     branch = State()
     kaspi1 = State()
@@ -37,17 +35,26 @@ class SalesStates(StatesGroup):
     talon = State()
     confirm = State()
 
-# Кнопкамен бөлім таңдау
-@dp.message(F.text == "/start")
+async def check_timeout(message: Message, state: FSMContext):
+    data = await state.get_data()
+    start_time = data.get("start_time")
+    if start_time and (datetime.now().timestamp() - start_time > 600):  # 10 минут
+        await state.clear()
+        await message.answer("⏰ Уақыт өтіп кетті. Бәрін қайтадан бастаймыз.\nҚай бөлімшесіз?", reply_markup=ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton(text=branches[i]), KeyboardButton(text=branches[i + 1])] for i in range(0, len(branches), 2)],
+            resize_keyboard=True
+        ))
+        await state.set_state(SalesStates.branch)
+        return False
+    return True
+
+@dp.message(commands=["start"])
 async def start(message: Message, state: FSMContext):
     keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text=branches[i]), KeyboardButton(text=branches[i+1])]
-            for i in range(0, len(branches), 2)
-        ],
+        keyboard=[[KeyboardButton(text=branches[i]), KeyboardButton(text=branches[i + 1])] for i in range(0, len(branches), 2)],
         resize_keyboard=True
     )
-    await message.answer("Қай бөлімшесіз? 👇", reply_markup=keyboard)
+    await message.answer("Қай бөлімшесіз?", reply_markup=keyboard)
     await state.set_state(SalesStates.branch)
 
 @dp.message(SalesStates.branch)
@@ -55,11 +62,13 @@ async def set_branch(message: Message, state: FSMContext):
     if message.text not in branches:
         await message.answer("Кнопкадан таңдаңыз.")
         return
-    await state.update_data(branch=message.text)
+    await state.update_data(branch=message.text, start_time=datetime.now().timestamp())
     await message.answer("Kaspi Pay-1 сомасын жазыңыз:", reply_markup=ReplyKeyboardRemove())
     await state.set_state(SalesStates.kaspi1)
 
 async def ask_next(message: Message, state: FSMContext, field: str, next_state: State, prompt: str):
+    if not await check_timeout(message, state):
+        return
     if not message.text.isdigit():
         await message.answer("Тек сандармен жазыңыз:")
         return
@@ -97,21 +106,16 @@ async def nal(message: Message, state: FSMContext):
 
 @dp.message(SalesStates.talon)
 async def talon(message: Message, state: FSMContext):
+    if not await check_timeout(message, state):
+        return
     if not message.text.isdigit():
         await message.answer("Санды дұрыс енгізіңіз:")
         return
     await state.update_data(talon=int(message.text))
-
     data = await state.get_data()
-    total = sum([
-        data["kaspi1"], data["kaspi2"], data["halyk1"], data["halyk2"],
-        data["ballom"], data["sert"], data["nal"], data["talon"]
-    ])
-    data["total"] = total
+    total = sum([data[key] for key in ["kaspi1", "kaspi2", "halyk1", "halyk2", "ballom", "sert", "nal", "talon"]])
     await state.update_data(total=total)
-
     date_str = datetime.today().strftime("%d.%m.%Y")
-
     result = (
         f"📅 Күні: {date_str}\n"
         f"🏢 Бөлімше: {data['branch']}\n\n"
@@ -125,12 +129,10 @@ async def talon(message: Message, state: FSMContext):
         f"Талон: {data['talon']}\n\n"
         f"💰 Жалпы: {total}"
     )
-
     keyboard = ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text="✅ Растаймын"), KeyboardButton(text="🔁 Қайта жазамын")]],
         resize_keyboard=True
     )
-
     await message.answer(result, reply_markup=keyboard)
     await state.set_state(SalesStates.confirm)
 
