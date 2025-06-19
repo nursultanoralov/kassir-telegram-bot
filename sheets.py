@@ -1,10 +1,15 @@
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2.service_account import Credentials
 from datetime import datetime
+import os
+import json
+
+# Railway т.б. ортаға GOOGLE_CREDENTIALS деп сақталған JSON құпияны жүктейміз
+creds_info = json.loads(os.getenv("GOOGLE_CREDENTIALS"))
 
 # Авторизация
-scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+creds = Credentials.from_service_account_info(creds_info, scopes=scope)
 client = gspread.authorize(creds)
 
 SPREADSHEET_NAME = "Kassir Reports"
