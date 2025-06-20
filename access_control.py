@@ -16,7 +16,7 @@ def save_allowed_users(users):
         json.dump(users, f)
 
 def is_allowed(user_id):
-    """Қолданушы ID рұқсат берілгендер тізімінде бар ма?"""ыы
+    """Қолданушы ID рұқсат берілгендер тізімінде бар ма?"""
     return user_id in load_allowed_users()
 
 def add_user(user_id):
