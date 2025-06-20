@@ -1,40 +1,43 @@
 import gspread
-import json
-import os
-from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2.service_account import Credentials
 from datetime import datetime
+import os
+import json
 
-scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+# Railway немесе локалды ортада GOOGLE_CREDENTIALS қоршаған айнымалынан жүктеу
+creds_info = json.loads(os.getenv("GOOGLE_CREDENTIALS"))
 
-credentials_dict = json.loads(os.getenv("GOOGLE_CREDENTIALS"))  # Railway-де сақталған JSON
-creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
+scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+creds = Credentials.from_service_account_info(creds_info, scopes=scope)
 client = gspread.authorize(creds)
 
 SPREADSHEET_NAME = "Kassir Reports"
 
-def save_to_sheet(branch, username, user_id, values, total):
+def save_to_sheet(branch, username, user_id, values):
     sheet = client.open(SPREADSHEET_NAME)
     try:
         worksheet = sheet.worksheet(branch)
     except gspread.WorksheetNotFound:
         worksheet = sheet.add_worksheet(title=branch, rows=1000, cols=20)
 
-    today = datetime.now().strftime("%d-%m-%Y")
+    now = datetime.now()
+    date_value = now.date()                      # күн (формат: YYYY-MM-DD)
+    time_value = now.strftime("%H:%M")           # уақыт (формат: 14:35)
 
     row = [
-        today,
+        str(date_value),
+        time_value,
         username,
         str(user_id),
-        values.get("Kaspi Pay1", 0),
-        values.get("Kaspi Pay2", 0),
-        values.get("Halyk bank1", 0),
-        values.get("Halyk bank2", 0),
-        values.get("Талон", 0),
+        values.get("Kaspi Pay-1", 0),
+        values.get("Kaspi Pay-2", 0),
+        values.get("Halyk-1", 0),
+        values.get("Halyk-2", 0),
+        values.get("Баллом", 0),
         values.get("Сертификат", 0),
         values.get("Наличка", 0),
-        values.get("Гости", 0),
-        values.get("Сотрудники", 0),
-        total
+        values.get("Талон", 0),
+        # Жалпы сумма енді бұл жерге жазылмайды! Google Sheets ішінде есептеледі
     ]
 
-    worksheet.append_row(row)
+    worksheet.append_row(row, value_input_option="USER_ENTERED")
