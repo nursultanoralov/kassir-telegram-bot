@@ -1,4 +1,7 @@
 # temp_storage.py
+import json
+import os  # ← МІНДЕТТІ түрде осы жол болу керек
+
 TEMP_FILE = "temp_storage.json"
 
 
@@ -29,3 +32,7 @@ def remove_temp_entry(user_id):
     if str(user_id) in data:
         del data[str(user_id)]
         save_temp_storage(data)
+
+
+def all_temp_entries():
+    return load_temp_storage()
