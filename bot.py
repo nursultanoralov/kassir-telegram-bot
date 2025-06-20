@@ -132,7 +132,7 @@ async def approve_user(call: CallbackQuery):
 
     if entry:
         add_user(user_id)
-        save_to_sheet(entry["branch"], entry["username"], entry["user_id"], entry["values"], entry["total"])
+        save_to_sheet(entry["branch"], entry["username"], entry["user_id"], entry["values"])
         remove_temp_entry(user_id)
         await bot.send_message(user_id, "✅ Сізге рұқсат берілді. Есебіңіз тіркелді.")
         await call.message.edit_text("✅ Қолданушыға рұқсат берілді.")
