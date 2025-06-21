@@ -21,3 +21,14 @@ def add_user(user_id):
     if user_id not in users:
         users.append(user_id)
         save_allowed_users(users)
+
+# access_control.py
+
+def add_user(user_id):
+    users = load_allowed_users()
+    if user_id not in users:
+        users.append(user_id)
+        save_allowed_users(users)
+        print(f"[add_user] Қолданушы қосылды: {user_id}")
+    else:
+        print(f"[add_user] Қолданушы бұрыннан бар: {user_id}")
