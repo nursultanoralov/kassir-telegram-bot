@@ -25,19 +25,21 @@ def save_to_sheet(branch, username, user_id, values):
     time_value = now.strftime("%H:%M")           # уақыт (формат: 14:35)
 
     row = [
-        str(date_value),
-        time_value,
-        username,
-        str(user_id),
-        values.get("Kaspi Pay-1", 0),
-        values.get("Kaspi Pay-2", 0),
-        values.get("Halyk-1", 0),
-        values.get("Halyk-2", 0),
-        values.get("Баллом", 0),
-        values.get("Сертификат", 0),
-        values.get("Наличка", 0),
-        values.get("Талон", 0),
-        # Жалпы сумма енді бұл жерге жазылмайды! Google Sheets ішінде есептеледі
-    ]
+    str(date_value),
+    time_value,
+    username,
+    str(user_id),
+    values.get("Kaspi Pay-1", 0),
+    values.get("Kaspi Pay-2", 0),
+    values.get("Halyk-1", 0),
+    values.get("Halyk-2", 0),
+    values.get("Баллом", 0),
+    values.get("Сертификат", 0),
+    values.get("Наличка", 0),
+    values.get("Талон", 0),
+    values.get("Сотрудники", 0),  # 🔹 Жаңа қосылған баған
+    # Жалпы сумма автоматты түрде формуламен есептеледі
+]
+
 
     worksheet.append_row(row, value_input_option="USER_ENTERED")
