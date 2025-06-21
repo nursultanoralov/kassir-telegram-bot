@@ -92,38 +92,45 @@ async def restart(call: CallbackQuery, state: FSMContext):
 @dp.callback_query(F.data == "confirm")
 async def confirm(call: CallbackQuery, state: FSMContext):
     data = await state.get_data()
+
+    # Қажетті деректер бар ма?
+    if "branch" not in data or "values" not in data:
+        await call.message.answer("⚠️ Есеп деректері табылмады. /start арқылы қайта бастаңыз.")
+        return
+
     branch = data["branch"]
     values = data["values"]
-    full_name = call.from_user.full_name
     user_id = call.from_user.id
+    full_name = call.from_user.full_name
     total = sum(values.values())
 
+    entry = {
+        "branch": branch,
+        "username": full_name,
+        "user_id": user_id,
+        "values": values,
+        "total": total
+    }
+
+    # Рұқсат тексеру
     if is_allowed(user_id):
         save_to_sheet(branch, full_name, user_id, values, total)
         await call.message.answer("✅ Есеп қабылданды! Рақмет.")
     else:
-        entry = {
-            "branch": branch,
-            "username": full_name,
-            "user_id": user_id,
-            "values": values,
-            "total": total
-        }
+        # Уақытша сақтау + админге сұрау жіберу
         add_temp_entry(user_id, entry)
-
-        kb = InlineKeyboardBuilder()
-        kb.button(text="✅ Рұқсат беру", callback_data=f"approve_{user_id}")
-        kb.button(text="❌ Бас тарту", callback_data=f"deny_{user_id}")
-        kb.adjust(2)
-
+        await call.message.answer("🕒 Сіздің есеп уақытша сақталды. Админ рұқсат берген соң тіркеледі.")
         await bot.send_message(
             ADMIN_ID,
-            f"🆕 Жаңа қолданушы есеп толтырды:\n\n👤 {full_name}\n🆔 ID: {user_id}\n📍 Бөлімше: {branch}\n💰 Жалпы сома: {total:,} тг\n\nРұқсат бересіз бе?",
-            reply_markup=kb.as_markup()
+            f"📥 Жаңа қолданушы рұқсатсыз есеп жіберді:\n"
+            f"👤 {full_name} ({user_id})\n"
+            f"📍 Бөлімше: {branch}\n"
+            f"💾 Жалпы сумма: {total:,} тг\n\n"
+            f"✅ Рұқсат беру үшін /approve_{user_id} деп жазыңыз"
         )
 
-        await call.message.answer("⏳ Admin рұқсатын күтіңіз. Есебіңіз уақытша сақталды.")
     await state.clear()
+
 
 @dp.callback_query(F.data.startswith("approve_"))
 async def approve_user(call: CallbackQuery):
