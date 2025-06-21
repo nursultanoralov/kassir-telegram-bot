@@ -192,6 +192,22 @@ async def handle_approval(user_id: int, approve: bool, message: Message | Callba
 
     remove_temp_entry(user_id)
 
+@dp.message(F.text == "/view_temp")
+async def view_temp(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        return await message.answer("🚫 Тек админ ғана көре алады.")
+    
+    from temp_storage import all_temp_entries
+    data = all_temp_entries()
+
+    if not data:
+        return await message.answer("ℹ️ Уақытша сақталған есептер жоқ.")
+    
+    text = "📦 Уақытша сақталған есептер:\n\n"
+    for uid, entry in data.items():
+        text += f"👤 {entry['username']} (ID: {uid})\n📍 {entry['branch']}\n📝 {entry['values']}\n\n"
+
+    await message.answer(text)
 
 if __name__ == "__main__":
     dp.run_polling(bot)
